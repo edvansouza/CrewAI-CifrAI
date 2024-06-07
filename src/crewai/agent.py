@@ -25,7 +25,20 @@ from crewai.memory.contextual.contextual_memory import ContextualMemory
 from crewai.utilities import I18N, Logger, Prompts, RPMController
 from crewai.utilities.token_counter_callback import TokenCalcHandler, TokenProcess
 
+agentops = None
+try:
+    import agentops
+    from agentops import track_agent
+except ImportError:
 
+    def track_agent():
+        def noop(f):
+            return f
+
+        return noop
+
+
+@track_agent()
 class Agent(BaseModel):
     """Represents an agent in a system.
 
@@ -55,6 +68,8 @@ class Agent(BaseModel):
     _rpm_controller: RPMController = PrivateAttr(default=None)
     _request_within_rpm_limit: Any = PrivateAttr(default=None)
     _token_process: TokenProcess = TokenProcess()
+    agent_ops_agent_name: str = None
+    agent_ops_agent_id: str = None
 
     formatting_errors: int = 0
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -138,6 +153,7 @@ class Agent(BaseModel):
     def __init__(__pydantic_self__, **data):
         config = data.pop("config", {})
         super().__init__(**config, **data)
+        __pydantic_self__.agent_ops_agent_name = __pydantic_self__.role
 
     @field_validator("id", mode="before")
     @classmethod
@@ -180,6 +196,12 @@ class Agent(BaseModel):
                 isinstance(handler, TokenCalcHandler) for handler in self.llm.callbacks
             ):
                 self.llm.callbacks.append(token_handler)
+
+            if agentops and not any(
+                isinstance(handler, agentops.LangchainCallbackHandler) for handler in self.llm.callbacks
+            ):
+                agentops.stop_instrumenting()
+                self.llm.callbacks.append(agentops.LangchainCallbackHandler())
 
         if not self.agent_executor:
             if not self.cache_handler:
