@@ -8,6 +8,7 @@ from langchain.agents.tools import tool as LangChainTool
 from langchain.tools.render import render_text_description
 from langchain_core.agents import AgentAction
 from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
 from pydantic import (
     UUID4,
@@ -49,6 +50,7 @@ class Agent(BaseModel):
             tools: Tools at agents disposal
             step_callback: Callback to be executed after each step of the agent execution.
             callbacks: A list of callback functions from the langchain library that are triggered during the agent's execution process
+            runnable_config: A runnable configuration to be used by the AgentExecutor
     """
 
     __hash__ = object.__hash__  # type: ignore
@@ -133,6 +135,10 @@ class Agent(BaseModel):
     response_template: Optional[str] = Field(
         default=None, description="Response format for the agent."
     )
+    runnable_config: Optional[RunnableConfig] = Field(
+        default=None,
+        description="A runnable configuration to be used by the AgentExecutor",
+    )
 
     _original_role: str | None = None
     _original_goal: str | None = None
@@ -196,6 +202,7 @@ class Agent(BaseModel):
         task: Any,
         context: Optional[str] = None,
         tools: Optional[List[Any]] = None,
+        runnable_config: Optional[RunnableConfig] = None,
     ) -> str:
         """Execute a task with the agent.
 
@@ -203,6 +210,7 @@ class Agent(BaseModel):
             task: Task to execute.
             context: Context to execute the task in.
             tools: Tools to use for the task.
+            runnable_config: A runnable configuration to be used by the AgentExecutor. Overrides the runnable_config attribute.
 
         Returns:
             Output of the agent
@@ -245,7 +253,8 @@ class Agent(BaseModel):
                 "input": task_prompt,
                 "tool_names": self.agent_executor.tools_names,
                 "tools": self.agent_executor.tools_description,
-            }
+            },
+            config=runnable_config or self.runnable_config,
         )["output"]
 
         if self.max_rpm:
