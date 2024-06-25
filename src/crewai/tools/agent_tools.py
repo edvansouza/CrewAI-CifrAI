@@ -3,7 +3,8 @@ from typing import List, Union
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from crewai.agent import Agent
+
+from crewai.agents.third_party_agents.base_agent import BaseAgent
 from crewai.task import Task
 from crewai.utilities import I18N
 
@@ -11,16 +12,17 @@ from crewai.utilities import I18N
 class AgentTools(BaseModel):
     """Default tools around agent delegation"""
 
-    agents: List[Agent] = Field(description="List of agents in this crew.")
+    agents: List[BaseAgent] = Field(description="List of agents in this crew.")
     i18n: I18N = Field(default=I18N(), description="Internationalization settings.")
 
     def tools(self):
+        coworkers = f"[{', '.join([f'{agent.role}' for agent in self.agents])}]"
         tools = [
             StructuredTool.from_function(
                 func=self.delegate_work,
                 name="Delegate work to coworker",
                 description=self.i18n.tools("delegate_work").format(
-                    coworkers=f"[{', '.join([f'{agent.role}' for agent in self.agents])}]"
+                    coworkers=coworkers
                 ),
             ),
             StructuredTool.from_function(

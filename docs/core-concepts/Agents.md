@@ -96,5 +96,59 @@ agent = Agent(
     )
 ```
 
+## Using a Custom Agent
+!!! note "Custom Agent Usage with BaseAgent"
+    Use other agents like llamaIndex. We created a BaseAgent, which is a wrapper around the core Agent class to run tasks, delegate tasks and ask questions to other agents in your crew and still fully customizable to fit all your needs.
+
+    We currently have llamaIndex, and langchain custom agents implemented using the BaseAgent class with the minumum requirements for compatiblity with CrewAI. They can be orchestrated with each other using agents that suit specific tasks - like RAG tasks with llamaIndex and easily adding search tools with langchain custom agents.
+
+    Overall, we aim to leverage the ecosystem of existing and custom AI agents to be able to effectively orchestrate tasks and agents for every crew.
+
+
+```py
+from crewai import Task, Crew
+from crewai.agents.third_party_agents.langchain_custom.agent import LangchainAgent
+from crewai.agents.third_party_agents.llama_index.agent import LlamaIndexReActAgent
+
+from langchain.agents import load_tools
+from langchain_openai import OpenAI
+
+llm = OpenAI(temperature=0)
+langchain_tools = load_tools(["google-serper"], llm=llm)
+
+# LlamaIndexReActAgent with its own tool
+agent1 = LlamaIndexReActAgent(
+    role="backstory agent",
+    goal="who is {input}?",
+    backstory="agent backstory",
+    verbose=True,
+)
+
+task1 = Task(
+    expected_output="a short biography of {input}",
+    description="a short biography of {input}",
+    agent=agent1,
+)
+
+agent2 = LangchainAgent(
+    role="bio agent",
+    goal="summarize the short bio for {input} and if needed do more research",
+    backstory="agent backstory",
+    verbose=True,
+)
+
+task2 = Task(
+    description="a tldr summary of the short biography",
+    expected_output="5 bullet point summary of the biography",
+    agent=agent2,
+    context=[task1],
+)
+
+my_crew = Crew(agents=[agent1, agent2], tasks=[task1, task2])
+crew = my_crew.kickoff(inputs={"input": "Mark Twain"})
+print("result:", crew)
+```
+
+
 ## Conclusion
 Agents are the building blocks of the CrewAI framework. By understanding how to define and interact with agents, you can create sophisticated AI systems that leverage the power of collaborative intelligence.
