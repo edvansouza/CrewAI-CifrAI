@@ -27,6 +27,7 @@ python-dotenv = "^1.0.0"
 embedchain = "0.1.109"
 appdirs = "^1.4.4"
 jsonref = "^1.1.0"
+uvicorn = "^0.22.0"  # Certifique-se de incluir esta linha
 
 [tool.poetry.extras]
 tools = ["crewai-tools"]
